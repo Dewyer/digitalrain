@@ -16,7 +16,7 @@ const App: React.FC = () =>
 	return (
 		<Router>
 			<Switch>
-				<Route exact path="/:color/:background" component={(props: any) => <RainScreen {...props} config={config}/>}/>
+				<Route exact path="/" component={(props: any) => <RainScreen {...props} config={config}/>}/>
 			</Switch>
 		</Router >
 	);

@@ -1,10 +1,15 @@
 
 export class Config
 {
-	drawTimerMs:number = 100;
+	drawTimerMs:number = 60;
 	fgColor:string = "#00ff00";
 	bgColor:string = "#000000";
-	fontSize:number = 30;
+	tipColor:string="#FFFFFF";
+	fontSize:number = 15;
+	bgAlpha:number=0.3;
+
+	rainCharacters: string = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩαβγδεζηθικλμνξοπρσςτυφχψωアァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズヅブプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン";
+	spawnChance:number = 0.05;
 }
 
 abstract class ConfigManager
@@ -18,7 +23,12 @@ abstract class ConfigManager
 
 	private static getObjectFromUrl(url:string) : any
 	{
-		let query = url.substr(1);
+		let query = url.split("?")[1];
+		if (query === undefined)
+		{
+			return {};
+		}
+
 		let result:any = {};
 		query.split("&").forEach(function (part)
 		{
@@ -33,7 +43,7 @@ abstract class ConfigManager
 		let params = this.getObjectFromUrl(url);
 		let conf:any = new Config();
 		let confKeys = Object.keys(conf);
-		for (let elKey in Object.keys(params))
+		for (let elKey in params)
 		{
 			if (confKeys.includes(elKey))
 			{
