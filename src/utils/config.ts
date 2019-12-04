@@ -7,6 +7,8 @@ export class Config
 	tipColor:string="#FFFFFF";
 	fontSize:number = 15;
 	bgAlpha:number=0.3;
+	rainbow:boolean=false;
+	maxCycle:number = 100;
 
 	rainCharacters: string = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩαβγδεζηθικλμνξοπρσςτυφχψωアァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズヅブプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン";
 	spawnChance:number = 0.05;
