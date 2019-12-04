@@ -3,7 +3,9 @@
 This is a react digital rain visualisation. You know, the green thing from the matrix.<br>
 [You can try it here](http://digitalrain.wexo.systems/)
 
-Available options:
+### Available options
+Set them like this: `http://digitalrain.wexo.systems/?<option_name1>=<value1>&<option_name2>=<value2>`<br>
+For example: `http://digitalrain.wexo.systems/?rainbow=true&bgColor=#fafafa`<br>
 ```
 drawTimerMs:number = 60; // the milisecond speed of the update loop
 fgColor:string = "#00ff00"; //foreground color
