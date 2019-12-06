@@ -50,7 +50,8 @@ export default class RainScreen extends React.Component<Props, State>
 	timer?: any;
 	rain: Drop[] = [];
 	cycleCount: number = 0;
-	randomRainCycle: number = 0;
+	dropPosDelta: number = 0;
+	atRowUpdate:boolean = true;
 
 	hexToRgbA(hex: string, alpha: number): string
 	{
@@ -66,6 +67,35 @@ export default class RainScreen extends React.Component<Props, State>
 			return 'rgba(' + [(c >> 16) & 255, (c >> 8) & 255, c & 255].join(',') + `,${alpha})`;
 		}
 		return `rgba(0,0,0,${alpha})`;
+	}
+
+	rgbaToHex(rgba:string):string
+	{
+		let vals = rgba.split("(")[1].split(")")[0].split(",");
+		let hex = "#";
+		for (let ii =0; ii < 3;ii++)
+		{
+			let nn = parseInt(vals[ii].trim()).toString(16);
+			if (nn.length == 1)
+			{
+				nn= "0"+nn;
+			}
+			hex+=nn;
+		}
+		return hex;
+
+	}
+
+	createNewRandomDrop(startX:number,startY:number):Drop
+	{
+		let drop = new Drop();
+		drop.yPos = startY;
+		drop.xPos = startX;
+		drop.trailLength = RandomManager.getRandomInt(this.props.config.minTrailLength, this.props.config.maxTrailLenght);
+		drop.firstChar = this.getNextRandomRainCharacter();
+		drop.fullText = "";
+		drop.word = this.props.config.word;
+		return drop;
 	}
 
 	getRainSize(): { columns: number, rows: number }
@@ -99,36 +129,57 @@ export default class RainScreen extends React.Component<Props, State>
 		{
 			this.initializeDrops();
 		}
+		if (this.atRowUpdate)
+			this.spawnExtraRain();
 
-		this.spawnExtraRain();
 		let sizeCols = this.getRainSize();
 		let differ = (Math.sin(this.cycleCount / config.maxCycle * 2 * Math.PI) + 1) / 2;
-		console.log(this.rain);
+
 		let rainbow = RainbowManager.getRainbowMatrix(differ, sizeCols.columns, sizeCols.rows);
 
 		for (let rainIndex in this.rain)
 		{
 			let drop = this.rain[rainIndex];
-			this.drawFullRainDrop(drop, rainbow, ctx, config);
+			this.drawFullRainDrop(drop, rainbow, ctx);
 		}
 
 		this.incrementAllDropsAndKill();
 
 		this.cycleCount++;
 		this.cycleCount = this.cycleCount % config.maxCycle;
-		this.randomRainCycle++;
-		this.randomRainCycle = this.randomRainCycle % config.randomRainChange;
+		this.dropPosDelta+=config.yVelocity;
+		this.dropPosDelta = this.dropPosDelta >= config.fontSize ? 0 : this.dropPosDelta;
+		this.atRowUpdate = this.dropPosDelta === 0;
 	}
 
-	drawFullRainDrop(drop: Drop, rainbow: string[][], ctx: CanvasRenderingContext2D, config: Config)
+	drawFullRainDrop(drop: Drop, rainbow: string[][], ctx: CanvasRenderingContext2D)
 	{
+		const config = this.props.config;
+
 		ctx.font = config.fontSize + "px Helvetica";
 		let rainBowColor = "";
 		let realTrailLength = Math.max(drop.trailLength, drop.word.length);
-		let atFgColor = this.hexToRgbA(config.fgColor, 1);
+		let baseColor = config.fgColor;
+		if (config.rainbow)
+		{
+			let roundX = Math.floor(drop.xPos/config.fontSize);
+			let roundY = Math.floor(drop.yPos/config.fontSize);
+
+			let triedRainbow = "";
+			try{
+				triedRainbow = rainbow[roundY][roundX];
+			}
+			catch{}
+			if (triedRainbow !== "")
+			{
+				baseColor = this.rgbaToHex(triedRainbow);
+			}
+		}
+
+		let atFgColor = this.hexToRgbA(baseColor, 1);
 		let realWord = drop.fullText;
 
-		if (this.randomRainCycle === 0)
+		if (this.atRowUpdate || realWord === "")
 		{
 			realWord = this.getNewFullTrailForDrop(drop);
 			drop.fullText = realWord;
@@ -142,43 +193,39 @@ export default class RainScreen extends React.Component<Props, State>
 				this.drawDrop(drop.xPos, realY, realColor, ctx, realWord[ii]);
 			}
 			if (ii !== 0)
-				atFgColor = this.hexToRgbA(config.fgColor, (1 - (ii / realTrailLength)));
+				atFgColor = this.hexToRgbA(baseColor, (1 - (ii / realTrailLength)));
 		}
 	}
 
 	getNewFullTrailForDrop(drop: Drop): string
 	{
-		let realTrailLength = Math.max(drop.trailLength, drop.word.length);
+
 		let word = "";
-		for (let ii = 0; ii < realTrailLength; ii++)
+		let fixFirstPart = drop.word !== ""? drop.word : drop.firstChar;
+
+		if (drop.trailLength > fixFirstPart.length)
 		{
-			let realAtChar = "";
-			if (ii == 0)
+			if (drop.fullText === "")
 			{
-				//Tip
-				if (drop.word === "")
+				let newFullRandom = "";
+				for (let ii = 0; ii < drop.trailLength - fixFirstPart.length;ii++)
 				{
-					realAtChar = drop.firstChar;
+					newFullRandom += this.getNextRandomRainCharacter();
 				}
-				else
-				{
-					realAtChar = drop.word[0];
-				}
+				word = fixFirstPart+newFullRandom;
 			}
 			else
 			{
-				if (ii < drop.word.length)
-				{
-					realAtChar = drop.word[ii];
-				}
-				else
-				{
-					realAtChar = this.getNextRandomRainCharacter();
-				}
-			}
+				let randomPart = this.getNextRandomRainCharacter() + drop.fullText.substring(fixFirstPart.length,drop.fullText.length-1);
 
-			word += realAtChar;
+				word = fixFirstPart+ randomPart;
+			}
 		}
+		else
+		{
+			word = drop.word;
+		}
+
 		return word;
 	}
 
@@ -205,11 +252,10 @@ export default class RainScreen extends React.Component<Props, State>
 
 		for (let colI = 0; colI < size.columns; colI++)
 		{
-			let drop = new Drop();
-			drop.yPos = RandomManager.getRandomInt(0, size.rows * this.props.config.fontSize);
-			drop.xPos = colI * this.props.config.fontSize;
-			drop.trailLength = RandomManager.getRandomInt(1, 7);
-			drop.firstChar = this.getNextRandomRainCharacter();
+			let yPos = RandomManager.getRandomInt(0, size.rows * this.props.config.fontSize);
+			let xPos = colI * this.props.config.fontSize;
+
+			let drop = this.createNewRandomDrop(xPos,yPos);
 			newRain.push(drop);
 		}
 
@@ -242,11 +288,10 @@ export default class RainScreen extends React.Component<Props, State>
 		{
 			if (Math.random() <= this.props.config.spawnChance)
 			{
-				let drop = new Drop();
-				drop.yPos = 0;
-				drop.xPos = colI * this.props.config.fontSize;
-				drop.firstChar = this.getNextRandomRainCharacter();
-				drop.trailLength = RandomManager.getRandomInt(1, 7);
+				let yPos = 0;
+				let xPos = colI * this.props.config.fontSize;
+				let drop = this.createNewRandomDrop(xPos,yPos);
+
 				newRain.push(drop);
 			}
 		}
