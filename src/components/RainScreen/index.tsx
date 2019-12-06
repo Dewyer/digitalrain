@@ -27,6 +27,9 @@ export class Drop
 	xPos: number = 0;
 	yPos: number = 0;
 	firstChar: string = "";
+	word: string = "";
+	trailLength: number = 0;
+	fullText: string = "";
 }
 
 export default class RainScreen extends React.Component<Props, State>
@@ -46,7 +49,8 @@ export default class RainScreen extends React.Component<Props, State>
 	canvas = React.createRef<HTMLCanvasElement>();
 	timer?: any;
 	rain: Drop[] = [];
-	cycleCount:number = 0;
+	cycleCount: number = 0;
+	randomRainCycle: number = 0;
 
 	hexToRgbA(hex: string, alpha: number): string
 	{
@@ -88,7 +92,7 @@ export default class RainScreen extends React.Component<Props, State>
 		const backgroundColor = this.hexToRgbA(config.bgColor, config.bgAlpha);
 		const fgColor = config.fgColor;
 
-		ctx.fillStyle = backgroundColor;
+		ctx.fillStyle = config.bgColor;
 		ctx.fillRect(0, 0, size.width, size.height);
 
 		if (this.rain.length === 0)
@@ -98,40 +102,87 @@ export default class RainScreen extends React.Component<Props, State>
 
 		this.spawnExtraRain();
 		let sizeCols = this.getRainSize();
-		let differ = (Math.sin(this.cycleCount / config.maxCycle *2*Math.PI)+1) / 2;
-		console.log(differ);
-		let rainbow = RainbowManager.getRainbowMatrix(differ,sizeCols.columns,sizeCols.rows);
+		let differ = (Math.sin(this.cycleCount / config.maxCycle * 2 * Math.PI) + 1) / 2;
+		console.log(this.rain);
+		let rainbow = RainbowManager.getRainbowMatrix(differ, sizeCols.columns, sizeCols.rows);
 
 		for (let rainIndex in this.rain)
 		{
 			let drop = this.rain[rainIndex];
-			ctx.font = config.fontSize + "px Helvetica";
-
-			let rainBowColor = "";
-			try
-			{
-				rainBowColor = rainbow[drop.yPos][drop.xPos];
-			}
-			catch{ }
-
-			let realTipColor = config.rainbow ? rainBowColor:config.tipColor;
-			let realFgColor = config.rainbow ? rainBowColor : fgColor;
-
-			this.drawDrop(drop.xPos, drop.yPos, realTipColor, ctx, config.fontSize, drop.firstChar);
-			//draw last drop
-			ctx.fillStyle = config.bgColor;
-			ctx.fillRect((drop.xPos) * config.fontSize, (drop.yPos - 1) * config.fontSize, config.fontSize, config.fontSize);
-
-			this.drawDrop(drop.xPos, drop.yPos - 1, realFgColor, ctx, config.fontSize);
+			this.drawFullRainDrop(drop, rainbow, ctx, config);
 		}
 
 		this.incrementAllDropsAndKill();
 
 		this.cycleCount++;
 		this.cycleCount = this.cycleCount % config.maxCycle;
+		this.randomRainCycle++;
+		this.randomRainCycle = this.randomRainCycle % config.randomRainChange;
 	}
 
-	drawDrop(xPos: number, yPos: number, color: string, ctx: CanvasRenderingContext2D, size: number, fixChar: string = "")
+	drawFullRainDrop(drop: Drop, rainbow: string[][], ctx: CanvasRenderingContext2D, config: Config)
+	{
+		ctx.font = config.fontSize + "px Helvetica";
+		let rainBowColor = "";
+		let realTrailLength = Math.max(drop.trailLength, drop.word.length);
+		let atFgColor = this.hexToRgbA(config.fgColor, 1);
+		let realWord = drop.fullText;
+
+		if (this.randomRainCycle === 0)
+		{
+			realWord = this.getNewFullTrailForDrop(drop);
+			drop.fullText = realWord;
+		}
+		for (let ii = 0; ii < realTrailLength; ii++)
+		{
+			let realColor = (config.tipColor !== "" && ii === 0 )? config.tipColor : atFgColor;
+			let realY = drop.yPos - (ii * config.fontSize);
+			if (realY > 0)
+			{
+				this.drawDrop(drop.xPos, realY, realColor, ctx, realWord[ii]);
+			}
+			if (ii !== 0)
+				atFgColor = this.hexToRgbA(config.fgColor, (1 - (ii / realTrailLength)));
+		}
+	}
+
+	getNewFullTrailForDrop(drop: Drop): string
+	{
+		let realTrailLength = Math.max(drop.trailLength, drop.word.length);
+		let word = "";
+		for (let ii = 0; ii < realTrailLength; ii++)
+		{
+			let realAtChar = "";
+			if (ii == 0)
+			{
+				//Tip
+				if (drop.word === "")
+				{
+					realAtChar = drop.firstChar;
+				}
+				else
+				{
+					realAtChar = drop.word[0];
+				}
+			}
+			else
+			{
+				if (ii < drop.word.length)
+				{
+					realAtChar = drop.word[ii];
+				}
+				else
+				{
+					realAtChar = this.getNextRandomRainCharacter();
+				}
+			}
+
+			word += realAtChar;
+		}
+		return word;
+	}
+
+	drawDrop(xPos: number, yPos: number, color: string, ctx: CanvasRenderingContext2D, fixChar: string = "")
 	{
 		let cha = fixChar;
 		if (cha === "")
@@ -139,7 +190,7 @@ export default class RainScreen extends React.Component<Props, State>
 			cha = this.getNextRandomRainCharacter();
 		}
 		ctx.fillStyle = color;
-		ctx.fillText(cha, (xPos) * size, (yPos + 1) * size);
+		ctx.fillText(cha, (xPos), (yPos));
 	}
 
 	getNextRandomRainCharacter(): string
@@ -155,8 +206,9 @@ export default class RainScreen extends React.Component<Props, State>
 		for (let colI = 0; colI < size.columns; colI++)
 		{
 			let drop = new Drop();
-			drop.yPos = RandomManager.getRandomInt(0, size.rows);
-			drop.xPos = colI;
+			drop.yPos = RandomManager.getRandomInt(0, size.rows * this.props.config.fontSize);
+			drop.xPos = colI * this.props.config.fontSize;
+			drop.trailLength = RandomManager.getRandomInt(1, 7);
 			drop.firstChar = this.getNextRandomRainCharacter();
 			newRain.push(drop);
 		}
@@ -172,8 +224,8 @@ export default class RainScreen extends React.Component<Props, State>
 		for (let dropIndex in this.rain)
 		{
 			let drop = this.rain[dropIndex];
-			drop.yPos++;
-			if (drop.yPos < size.rows)
+			drop.yPos += this.props.config.yVelocity;
+			if (drop.yPos < (size.rows+7) * this.props.config.fontSize)
 			{
 				nextRain.push(drop);
 			}
@@ -192,8 +244,9 @@ export default class RainScreen extends React.Component<Props, State>
 			{
 				let drop = new Drop();
 				drop.yPos = 0;
-				drop.xPos = colI;
+				drop.xPos = colI * this.props.config.fontSize;
 				drop.firstChar = this.getNextRandomRainCharacter();
+				drop.trailLength = RandomManager.getRandomInt(1, 7);
 				newRain.push(drop);
 			}
 		}

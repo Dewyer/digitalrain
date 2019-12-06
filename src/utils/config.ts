@@ -1,7 +1,7 @@
 
 export class Config
 {
-	drawTimerMs:number = 60;
+	drawTimerMs:number = 100;
 	fgColor:string = "#00ff00";
 	bgColor:string = "#000000";
 	tipColor:string="#FFFFFF";
@@ -9,6 +9,9 @@ export class Config
 	bgAlpha:number=0.3;
 	rainbow:boolean=false;
 	maxCycle:number = 100;
+	yVelocity:number = 5;
+	trailLenght:number = 7;
+	randomRainChange:number = 20;
 
 	rainCharacters: string = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩαβγδεζηθικλμνξοπρσςτυφχψωアァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズヅブプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン";
 	spawnChance:number = 0.05;
